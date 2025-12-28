@@ -14,7 +14,6 @@ export async function POST(request: Request) {
 
   const upperCode = code.toUpperCase().trim()
 
-  // Find the code
   const { data: accessCode, error: codeError } = await supabase
     .from('access_codes')
     .select('*')
@@ -34,19 +33,21 @@ export async function POST(request: Request) {
 
   let userId = user?.id
 
-  // If no user, create a temporary one
+  // If no authenticated user, create a temporary one
   if (!userId) {
     const tempEmail = `temp-${upperCode.toLowerCase()}@kogbodi.edu.ng`
-    const { data: newUser, error: createError } = await supabase.auth.signUp({
+    const tempPassword = 'temp-password-123'  // Change later via profile
+
+    const { data: newUser, error: signUpError } = await supabase.auth.signUp({
       email: tempEmail,
-      password: 'temp-password-123',  // User can change later
+      password: tempPassword,
       options: {
         data: { from_code: upperCode },
       },
     })
 
-    if (createError || !newUser.user) {
-      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
+    if (signUpError || !newUser.user) {
+      return NextResponse.json({ error: 'Failed to create temporary account' }, { status: 500 })
     }
 
     userId = newUser.user.id
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     // Auto sign in the new user
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: tempEmail,
-      password: 'temp-password-123',
+      password: tempPassword,
     })
 
     if (signInError) {
@@ -72,14 +73,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to redeem code' }, { status: 500 })
   }
 
-  // Update profile with role and class
+  // Bind role and class to profile
   const { error: profileError } = await supabase
     .from('profiles')
     .upsert({
       id: userId,
       role: accessCode.role,
-      class: accessCode.class,
-      full_name: accessCode.role === 'teacher' ? 'Teacher' : 'Student',
+      class: accessCode.class || null,
+      full_name: accessCode.role === 'teacher' ? 'New Teacher' : 'New Student',
     })
 
   if (profileError) {
@@ -87,4 +88,4 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ success: true })
-      }
+    }
