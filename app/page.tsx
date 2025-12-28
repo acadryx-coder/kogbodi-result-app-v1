@@ -1,141 +1,84 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'code' | 'login'>('code')
   const [code, setCode] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
-  const supabase = createClient()
 
-  const handleCodeSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
-    // Call server action to validate and redeem code (we'll add this next)
+    // This will call our future /api/redeem-code endpoint
     const res = await fetch('/api/redeem-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code.toUpperCase().trim() }),
+      body: JSON.stringify({ code: code.trim().toUpperCase() }),
     })
 
     const data = await res.json()
-    if (data.error) {
-      setMessage(data.error)
-    } else {
-      // Auto-login after redeem
-      router.push('/dashboard')
-      router.refresh()
-    }
-    setLoading(false)
-  }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setMessage(error.message)
-    else router.push('/dashboard')
+    if (data.success) {
+      setMessage('Welcome! Redirecting to your dashboard...')
+      setTimeout(() => router.push('/dashboard'), 1500)
+    } else {
+      setMessage(data.error || 'Invalid or expired code')
+    }
+
     setLoading(false)
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/5 to-accent/10">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl">
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold text-primary">Kogbodi International School</h2>
-          <p className="text-gray-600">Access your results portal</p>
+      <div className="w-full max-w-md rounded-xl bg-white p-10 shadow-2xl">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-primary">Kogbodi International School</h1>
+          <p className="text-lg text-gray-600 mt-2">Digital Results Portal</p>
         </div>
 
-        <div className="mb-6 flex justify-center gap-4">
-          <button
-            onClick={() => setMode('code')}
-            className={`px-4 py-2 rounded ${mode === 'code' ? 'bg-primary text-white' : 'bg-gray-200'}`}
-          >
-            Enter Access Code
-          </button>
-          <button
-            onClick={() => setMode('login')}
-            className={`px-4 py-2 rounded ${mode === 'login' ? 'bg-primary text-white' : 'bg-gray-200'}`}
-          >
-            Login with Email
-          </button>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Enter Your Access Code
+            </label>
+            <input
+              type="text"
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none uppercase tracking-wider"
+              placeholder="e.g. TCH-MATH-JSS1-X92A"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 mt-3">
+              Your code was provided by the school administration
+            </p>
+          </div>
 
-        {mode === 'code' && (
-          <form onSubmit={handleCodeSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Access Code (provided by school)
-              </label>
-              <input
-                type="text"
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-lg uppercase"
-                placeholder="STD-KIS-JSS2-ARM1-X92A"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-primary px-4 py-3 text-white font-medium hover:bg-primary/90"
-            >
-              {loading ? 'Validating...' : 'Activate Account'}
-            </button>
-          </form>
-        )}
-
-        {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-primary px-4 py-3 text-white font-medium hover:bg-primary/90"
-            >
-              Sign In
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 disabled:opacity-60 transition"
+          >
+            {loading ? 'Validating Code...' : 'Activate & Continue'}
+          </button>
+        </form>
 
         {message && (
-          <p className={`text-center mt-4 ${message.includes('Invalid') ? 'text-red-600' : 'text-green-600'}`}>
+          <div className={`mt-6 text-center p-4 rounded-lg ${message.includes('Welcome') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
             {message}
-          </p>
+          </div>
         )}
 
-        <p className="text-center text-sm text-gray-600 mt-6">
-          No access code? Contact your school administrator.
+        <p className="text-center text-sm text-gray-600 mt-8">
+          Lost your code? Contact the school ICT office.
         </p>
       </div>
     </div>
   )
-    }
+                            }
