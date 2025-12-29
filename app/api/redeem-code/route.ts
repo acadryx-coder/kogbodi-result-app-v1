@@ -6,11 +6,6 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const { code } = await request.json()
-
-  const supabaseAdmin = createRouteHandlerClient({ cookies }, {
-    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  })
-
   const supabase = createRouteHandlerClient({ cookies })
 
   if (!code) {
@@ -19,7 +14,7 @@ export async function POST(request: Request) {
 
   const upperCode = code.toUpperCase().trim()
 
-  const { data: accessCode, error: codeError } = await supabaseAdmin
+  const { data: accessCode, error: codeError } = await supabase
     .from('access_codes')
     .select('*')
     .eq('code', upperCode)
@@ -39,14 +34,12 @@ export async function POST(request: Request) {
 
   if (!userId) {
     const tempEmail = `temp-${upperCode.toLowerCase()}@kogbodi.edu.ng`
-
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: newUser, error: signUpError } = await supabase.auth.signUp({
       email: tempEmail,
-      email_confirm: true,
-      user_metadata: { from_code: upperCode },
+      password: 'temp-password-123',
     })
 
-    if (createError || !newUser.user) {
+    if (signUpError || !newUser.user) {
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
     }
 
@@ -58,7 +51,7 @@ export async function POST(request: Request) {
     })
   }
 
-  await supabaseAdmin
+  await supabase
     .from('access_codes')
     .update({ used_by: userId, used_at: new Date().toISOString() })
     .eq('id', accessCode.id)
@@ -71,5 +64,5 @@ export async function POST(request: Request) {
       class: accessCode.class,
     })
 
-  return NextResponse.json({ success: true })
-      }
+  return NextResponse.json({ success: true, redirect: '/dashboard' })
+    }
