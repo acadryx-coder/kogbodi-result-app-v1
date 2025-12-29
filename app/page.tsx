@@ -1,11 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const supabase = createClient()
+
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        setMessage('Welcome to the school family! 🎉')
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 1500)
+      }
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,16 +36,11 @@ export default function LoginPage() {
     const data = await res.json()
 
     if (data.success) {
-      setMessage('Welcome to the school family! 🎉')
-      // Force full reload to show dashboard
-      setTimeout(() => {
-        window.location.reload()
-      }, 2000)
+      setMessage('Validating and signing you in...')
     } else {
       setMessage(data.error || 'Invalid code')
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -55,9 +65,6 @@ export default function LoginPage() {
               placeholder="TCH-MATH-JSS1-TEST1"
               autoFocus
             />
-            <p className="text-sm text-gray-600 mt-4 text-center">
-              Your unique code was provided by the school administration
-            </p>
           </div>
 
           <button
@@ -70,9 +77,7 @@ export default function LoginPage() {
         </form>
 
         {message && (
-          <div className={`mt-8 text-center p-5 rounded-lg text-lg font-medium ${
-            message.includes('Welcome') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}>
+          <div className="mt-8 text-center p-5 rounded-lg text-lg font-medium bg-green-50 text-green-800">
             {message}
           </div>
         )}
@@ -83,4 +88,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-          }
+      }
