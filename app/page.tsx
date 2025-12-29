@@ -1,26 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useState } from 'react'
 
 export default function LoginPage() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const supabase = createClient()
-
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setMessage('Welcome to the school family! 🎉')
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 1500)
-      }
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,11 +21,19 @@ export default function LoginPage() {
     const data = await res.json()
 
     if (data.success) {
-      setMessage('Validating and signing you in...')
+      setMessage('Welcome to the school family! 🎉')
+      setTimeout(() => {
+        if (data.redirect) {
+          window.location.href = data.redirect
+        } else {
+          window.location.reload()
+        }
+      }, 2000)
     } else {
       setMessage(data.error || 'Invalid code')
-      setLoading(false)
     }
+
+    setLoading(false)
   }
 
   return (
@@ -77,7 +70,9 @@ export default function LoginPage() {
         </form>
 
         {message && (
-          <div className="mt-8 text-center p-5 rounded-lg text-lg font-medium bg-green-50 text-green-800">
+          <div className={`mt-8 text-center p-5 rounded-lg text-lg font-medium ${
+            message.includes('Welcome') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}>
             {message}
           </div>
         )}
