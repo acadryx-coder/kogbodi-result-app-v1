@@ -7,9 +7,8 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   const { code } = await request.json()
 
-  // Use service_role to bypass RLS for code lookup
   const supabaseAdmin = createRouteHandlerClient({ cookies }, {
-    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
   })
 
   const supabase = createRouteHandlerClient({ cookies })
@@ -34,19 +33,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'This code has already been used' }, { status: 400 })
   }
 
-  // Get current user or create temp one
   const { data: { user } } = await supabase.auth.getUser()
 
   let userId = user?.id
 
   if (!userId) {
     const tempEmail = `temp-${upperCode.toLowerCase()}@kogbodi.edu.ng`
-    const { data: newUser, error: signUpError } = await supabase.auth.signUp({
+
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: tempEmail,
-      password: 'temp-password-123',
+      email_confirm: true,
+      user_metadata: { from_code: upperCode },
     })
 
-    if (signUpError || !newUser.user) {
+    if (createError || !newUser.user) {
       return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
     }
 
@@ -58,13 +58,11 @@ export async function POST(request: Request) {
     })
   }
 
-  // Mark code used
   await supabaseAdmin
     .from('access_codes')
     .update({ used_by: userId, used_at: new Date().toISOString() })
     .eq('id', accessCode.id)
 
-  // Bind role/class
   await supabase
     .from('profiles')
     .upsert({
@@ -74,4 +72,4 @@ export async function POST(request: Request) {
     })
 
   return NextResponse.json({ success: true })
-    }
+      }
