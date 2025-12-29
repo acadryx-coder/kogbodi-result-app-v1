@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,9 +22,12 @@ export default function LoginPage() {
 
     if (data.success) {
       setMessage('Welcome to the school family! 🎉')
-      setTimeout(() => router.push('/dashboard'), 1500)
+      // Force full reload to show dashboard
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
     } else {
-      setMessage(data.error || 'Invalid code. Please check and try again.')
+      setMessage(data.error || 'Invalid code')
     }
 
     setLoading(false)
@@ -82,4 +83,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-      }
+          }
